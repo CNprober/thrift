@@ -80,12 +80,12 @@ class BoostThread: public Thread {
     }
   
   // Create reference
-    shared_ptr<BoostThread>* selfRef = new shared_ptr<BoostThread>();
+    shared_ptr<BoostThread>* selfRef = new shared_ptr<BoostThread>();   
     *selfRef = self_.lock();
 
     state_ = starting;
 
-    thread_ = std::auto_ptr<boost::thread>(new boost::thread(boost::bind(threadMain, (void*)selfRef)));
+    thread_ = std::auto_ptr<boost::thread>(new boost::thread(boost::bind(threadMain, (void*)selfRef))); //BOOST线程创建比POSIX线程创建简单很多
 
     if(detached_)
       thread_->detach();
@@ -152,8 +152,8 @@ class BoostThreadFactory::Impl {
    */
   shared_ptr<Thread> newThread(shared_ptr<Runnable> runnable) const {
     shared_ptr<BoostThread> result = shared_ptr<BoostThread>(new BoostThread(detached_, runnable));
-    result->weakRef(result);
-    runnable->thread(result);
+    result->weakRef(result);    //自身引用
+    runnable->thread(result);   //runnable绑定BOOST线程类
     return result;
   }
 

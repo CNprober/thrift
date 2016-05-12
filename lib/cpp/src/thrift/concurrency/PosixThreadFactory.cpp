@@ -39,14 +39,14 @@ using boost::shared_ptr;
 using boost::weak_ptr;
 
 /**
- * The POSIX thread class.
+ * The POSIX thread class. //POSIX线程封装类，继承Thread类
  *
  * @version $Id:$
  */
 class PthreadThread: public Thread {
  public:
 
-  enum STATE {
+  enum STATE {      //线程状态
     uninitialized,
     starting,
     started,
@@ -151,7 +151,7 @@ class PthreadThread: public Thread {
   void join() {
     if (!detached_ && state_ != uninitialized) {
       void* ignore;
-      /* XXX
+      /* XXX join失败最可能的原因是对这个Thread类最后的引用...不知道怎么翻译,应该是多线程和析构的问题,陈硕有文章探讨这个话题
          If join fails it is most likely due to the fact
          that the last reference was the thread itself and cannot
          join.  This results in leaked threads and will eventually
@@ -181,14 +181,14 @@ class PthreadThread: public Thread {
 
   void runnable(shared_ptr<Runnable> value) { Thread::runnable(value); }
 
-  void weakRef(shared_ptr<PthreadThread> self) {
+  void weakRef(shared_ptr<PthreadThread> self) {    //对自身进行弱引用？不知道这阳有什么意义
     assert(self.get() == this);
     self_ = weak_ptr<PthreadThread>(self);
   }
 };
 
-void* PthreadThread::threadMain(void* arg) {
-  shared_ptr<PthreadThread> thread = *(shared_ptr<PthreadThread>*)arg;
+void* PthreadThread::threadMain(void* arg) {        //static线程处理函数
+  shared_ptr<PthreadThread> thread = *(shared_ptr<PthreadThread>*)arg;      //参数传递的是自身实例的指针
   delete reinterpret_cast<shared_ptr<PthreadThread>*>(arg);
 
   if (thread == NULL) {
@@ -204,8 +204,8 @@ void* PthreadThread::threadMain(void* arg) {
 #endif
 
   thread->state_ = started;
-  thread->runnable()->run();
-  if (thread->state_ != stopping && thread->state_ != stopped) {
+  thread->runnable()->run();            //执行绑定的runnable实例的run方法
+  if (thread->state_ != stopping && thread->state_ != stopped) {     //线程状态改成stopping
     thread->state_ = stopping;
   }
 
@@ -225,7 +225,7 @@ class PosixThreadFactory::Impl {
 
   /**
    * Converts generic posix thread schedule policy enums into pthread
-   * API values.
+   * API values. //通用的额线程调度策略转换成POSIX线程调度策略
    */
   static int toPthreadPolicy(POLICY policy) {
     switch (policy) {
@@ -241,11 +241,11 @@ class PosixThreadFactory::Impl {
 
   /**
    * Converts relative thread priorities to absolute value based on posix
-   * thread scheduler policy
+   * thread scheduler policy //通用的线程优先级转换成POSIX线程优先级
    *
    *  The idea is simply to divide up the priority range for the given policy
    * into the correpsonding relative priority level (lowest..highest) and
-   * then pro-rate accordingly.
+   * then pro-rate accordingly. //方法就等分POSIX可以用的优先级，分配给各不同通用等级的线程
    */
   static int toPthreadPriority(POLICY policy, PRIORITY priority) {
     int pthread_policy = toPthreadPolicy(policy);
@@ -284,8 +284,8 @@ class PosixThreadFactory::Impl {
    */
   shared_ptr<Thread> newThread(shared_ptr<Runnable> runnable) const {
     shared_ptr<PthreadThread> result = shared_ptr<PthreadThread>(new PthreadThread(toPthreadPolicy(policy_), toPthreadPriority(policy_, priority_), stackSize_, detached_, runnable));
-    result->weakRef(result);
-    runnable->thread(result);
+    result->weakRef(result);    //new一个PthreadThread实例--POSIX线程对象,绑定runnable对象, 让其弱引用自身
+    runnable->thread(result);   //runnable对象绑定该线程实例
     return result;
   }
 

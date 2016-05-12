@@ -43,17 +43,17 @@ class Monitor::Impl : public boost::condition_variable_any {
   Impl()
      : ownedMutex_(new Mutex()),
        mutex_(NULL) {
-    init(ownedMutex_.get());
+    init(ownedMutex_.get());    //mutex_ = ownedMutex_.get()
   }
 
   Impl(Mutex* mutex)
      : mutex_(NULL) {
-    init(mutex);
+    init(mutex);    //mutex_ = mutex
   }
 
   Impl(Monitor* monitor)
      : mutex_(NULL) {
-    init(&(monitor->mutex()));
+    init(&(monitor->mutex()));  //mutex_ = monitor->mutex()
   }
 
   Mutex& mutex() { return *mutex_; }
@@ -94,7 +94,7 @@ class Monitor::Impl : public boost::condition_variable_any {
     assert(mutexImpl);
 
 	boost::timed_mutex::scoped_lock lock(*mutexImpl, boost::adopt_lock);
-	int res = timed_wait(lock, boost::get_system_time()+boost::posix_time::milliseconds(timeout_ms)) ? 0 : THRIFT_ETIMEDOUT;
+	int res = timed_wait(lock, boost::get_system_time()+boost::posix_time::milliseconds(timeout_ms)) ? 0 : THRIFT_ETIMEDOUT;    //timed_wait∏∏¿‡condition_variable_any∑Ω∑®
 	lock.release();
 	return res;
   }

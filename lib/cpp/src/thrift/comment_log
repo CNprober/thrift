@@ -2,3 +2,13 @@ RTFSC
 
 增长知识,多读源码 -- 这是第一个项目, thrift.
 
+someday - 2016.5.12 concurrency目录:
+	1.封装了基础的锁(pthread_mutex_t,pthread_rwlock_t[读写,不会饿死写的读写]; C++11的std::timed_mutex; Boost的boost::timed_mutex),及辅助使用类Guard,RWGuard)
+	2.封装了基础的条件变量(pthread_cond_t,std::condition_variable_any,boost::condition_variable_any), 其中用到的锁可以自建,也可以构造时传入,使用时非常便利
+	3.封装了线程Thread(具体实现pthread_t,boost::thread,std::thread),线程工厂ThreadFactory(具体构造前面3种线程)--工厂模式,但是都是用内置Impl的方式组装的
+	4.线程池，线程池有线程队列(workers),有任务队列(tasks), 线程池的线程可以动态增加减少.线程池使用之前需要先设定一个线程工厂,每个线程Worker对应一个Thread实例,每个Task是一个Runnable接口的实例
+	每个Runnable的子类都可以用来构造一个Task,丢进线程池的任务队列等待处理.任务支持有效时间,同时支持添加任务超时机制.
+concurrency目录基本框架分析完成。
+
+
+

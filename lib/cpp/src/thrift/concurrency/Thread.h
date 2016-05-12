@@ -64,7 +64,7 @@ class Runnable {
   virtual void thread(boost::shared_ptr<Thread> value) { thread_ = value; }
 
  private:
-  boost::weak_ptr<Thread> thread_;
+  boost::weak_ptr<Thread> thread_;  //弱引用,更像是一个旁观者,无operator* 和 operator->，不增加引用计数, lock()转化成share_ptr,
 };
 
 /**
@@ -72,7 +72,7 @@ class Runnable {
  * and ready to start execution.  More or less analogous to java.lang.Thread
  * (minus all the thread group, priority, mode and other baggage, since that
  * is difficult to abstract across platforms and is left for platform-specific
- * ThreadFactory implemtations to deal with
+ * ThreadFactory implemtations to deal with 最小化的线程封装类，没有线程组，优先级，权限和其他负担，因为很难进行跨平台进行抽象，所以留给那些平台特异性的ThreadFactory来处理
  *
  * @see apache::thrift::concurrency::ThreadFactory)
  */
@@ -84,7 +84,7 @@ class Thread {
   typedef boost::thread::id id_t;
 
   static inline bool is_current(id_t t) { return t == boost::this_thread::get_id(); }
-  static inline id_t get_current() { return boost::this_thread::get_id(); }
+  static inline id_t get_current() { return boost::this_thread::get_id(); }     //判断/获取当前线程id的函数
 #elif USE_STD_THREAD
   typedef std::thread::id id_t;
 
@@ -104,18 +104,18 @@ class Thread {
    * configuration then invokes the run method of the Runnable object bound
    * to this thread.
    */
-  virtual void start() = 0;
+  virtual void start() = 0;     //平台特异地创建线程，然后调用绑定在这个Thread实例的Runnable实例的run方法
 
   /**
    * Join this thread. Current thread blocks until this target thread
    * completes.
    */
-  virtual void join() = 0;
+  virtual void join() = 0;      //block本线程,直到目标线程结束.如执行t.join(), 就是在本线程阻塞直到t结束
 
   /**
    * Gets the thread's platform-specific ID
    */
-  virtual id_t getId() = 0;
+  virtual id_t getId() = 0;     //获取跨平台表示的线程id
 
   /**
    * Gets the runnable object this thread is hosting
@@ -132,19 +132,19 @@ class Thread {
 
 /**
  * Factory to create platform-specific thread object and bind them to Runnable
- * object for execution
+ * object for execution 线程工厂类，用于创建平台特异的线程类，然后给这个线程类实例绑定Runnable实例
  */
 class ThreadFactory {
 
  public:
   virtual ~ThreadFactory() {}
-  virtual boost::shared_ptr<Thread> newThread(boost::shared_ptr<Runnable> runnable) const = 0;
+  virtual boost::shared_ptr<Thread> newThread(boost::shared_ptr<Runnable> runnable) const = 0;      //创建线程实例,参数是一个Runnable实例
 
   /** Gets the current thread id or unknown_thread_id if the current thread is not a thrift thread */
 
   static const Thread::id_t unknown_thread_id;
 
-  virtual Thread::id_t getCurrentThreadId() const = 0;
+  virtual Thread::id_t getCurrentThreadId() const = 0;  //获取当前线程id或者unknow_thread_id
 };
 
 }}} // apache::thrift::concurrency

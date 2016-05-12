@@ -27,7 +27,7 @@
 namespace apache { namespace thrift { namespace concurrency {
 
 /**
- * A thread factory to create posix threads
+ * A thread factory to create posix threads POSIX线程工厂
  *
  * @version $Id:$
  */
@@ -36,7 +36,7 @@ class PosixThreadFactory : public ThreadFactory {
  public:
 
   /**
-   * POSIX Thread scheduler policies
+   * POSIX Thread scheduler policies POSIX线程调度策略
    */
   enum POLICY {
     OTHER,
@@ -45,7 +45,7 @@ class PosixThreadFactory : public ThreadFactory {
   };
 
   /**
-   * POSIX Thread scheduler relative priorities,
+   * POSIX Thread scheduler relative priorities, 相对优先级？？
    *
    * Absolute priority is determined by scheduler policy and OS. This
    * enumeration specifies relative priorities such that one can specify a
@@ -68,13 +68,13 @@ class PosixThreadFactory : public ThreadFactory {
    * Posix thread (pthread) factory.  All threads created by a factory are reference-counted
    * via boost::shared_ptr and boost::weak_ptr.  The factory guarantees that threads and
    * the Runnable tasks they host will be properly cleaned up once the last strong reference
-   * to both is given up.
+   * to both is given up. POSIX线程工厂创建的所有线程都用boost::shared_ptr和weak_ptr进行引用计数，以确保线程实例和线程实例绑定的runnable对象可以被正确析构
    *
    * Threads are created with the specified policy, priority, stack-size and detachable-mode
    * detached means the thread is free-running and will release all system resources the
    * when it completes.  A detachable thread is not joinable.  The join method
-   * of a detachable thread will return immediately with no error.
-   *
+   * of a detachable thread will return immediately with no error. 线程工厂以某种调度策略、优先级、栈大小，detached属性创建线程
+   * detached属性指是否可以被join(即，是否可以被其他线程等待).具有detached属性的线程调用其join方法时会立即返回，而不发生错误。
    * By default threads are not joinable.
    */
 
@@ -87,21 +87,21 @@ class PosixThreadFactory : public ThreadFactory {
   Thread::id_t getCurrentThreadId() const;
 
   /**
-   * Gets stack size for created threads
+   * Gets stack size for created threads 获取线程栈大小
    *
    * @return int size in megabytes
    */
   virtual int getStackSize() const;
 
   /**
-   * Sets stack size for created threads
+   * Sets stack size for created threads 设置线程栈大小
    *
    * @param value size in megabytes
    */
   virtual void setStackSize(int value);
 
   /**
-   * Gets priority relative to current policy
+   * Gets priority relative to current policy 获取相对优先级
    */
   virtual PRIORITY getPriority() const;
 
@@ -111,17 +111,17 @@ class PosixThreadFactory : public ThreadFactory {
   virtual void setPriority(PRIORITY priority);
 
   /**
-   * Sets detached mode of threads
+   * Sets detached mode of threads 设置分离状态
    */
   virtual void setDetached(bool detached);
 
   /**
-   * Gets current detached mode
+   * Gets current detached mode 获取分离状态
    */
   virtual bool isDetached() const;
 
  private:
-  class Impl;
+  class Impl;       //内部类
   boost::shared_ptr<Impl> impl_;
 };
 

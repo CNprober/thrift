@@ -56,7 +56,7 @@ void enableMutexProfiling(int32_t profilingSampleRate,
  *
  * @version $Id:$
  */
-class Mutex {
+class Mutex {   //简单互斥量
  public:
   typedef void (*Initializer)(void*);
 
@@ -79,7 +79,7 @@ class Mutex {
   boost::shared_ptr<impl> impl_;
 };
 
-class ReadWriteMutex {
+class ReadWriteMutex {  //读写互斥量
 public:
   ReadWriteMutex();
   virtual ~ReadWriteMutex() {}
@@ -106,7 +106,7 @@ private:
  * When a writer attempts to acquire the mutex, all new readers will be
  * blocked from acquiring the mutex until the writer has acquired and
  * released it. In some operating systems, this may already be guaranteed
- * by a regular ReadWriteMutex.
+ * by a regular ReadWriteMutex. 读写互斥量,实现保证写操作不会被读饿死语义. 在某些系统的实现中,上一个已经实现了这个语义
  */
 class NoStarveReadWriteMutex : public ReadWriteMutex {
 public:
@@ -120,7 +120,7 @@ private:
   mutable volatile bool writerWaiting_;
 };
 
-class Guard : boost::noncopyable {
+class Guard : boost::noncopyable {      //简单互斥量的守卫
  public:
   Guard(const Mutex& value, int64_t timeout = 0) : mutex_(&value) {
     if (timeout == 0) {
@@ -157,7 +157,7 @@ enum RWGuardType {
 };
 
 
-class RWGuard : boost::noncopyable {
+class RWGuard : boost::noncopyable {    //读写互斥量的守卫
   public:
     RWGuard(const ReadWriteMutex& value, bool write = false)
          : rw_mutex_(value) {

@@ -75,11 +75,11 @@ class ThreadManager::Impl : public ThreadManager  {
   }
 
   shared_ptr<ThreadFactory> threadFactory() const {
-    Synchronized s(monitor_);
+    Synchronized s(monitor_);   //构造锁住monitor_中的mutex, 析构解锁. 所以其实就是实现了一个线程互斥锁
     return threadFactory_;
   }
 
-  void threadFactory(shared_ptr<ThreadFactory> value) {
+  void threadFactory(shared_ptr<ThreadFactory> value) { //threadFactory_是一个shared_ptr,所以ThreadManager使用前一定要调用本函数指定一个TreadFactory
     Synchronized s(monitor_);
     threadFactory_ = value;
   }
@@ -130,20 +130,20 @@ class ThreadManager::Impl : public ThreadManager  {
 
   void remove(shared_ptr<Runnable> task);
 
-  shared_ptr<Runnable> removeNextPending();
+  shared_ptr<Runnable> removeNextPending();     //大致是获取下一个任务, 但是没有被用到. 估计是有锁的原因,在Worker的run函数中没有调用这个
 
-  void removeExpiredTasks();
+  void removeExpiredTasks();        //pop过期task,直到当前task为未过期的task, 这个函数没有锁,需要使用者自己加锁
 
   void setExpireCallback(ExpireCallback expireCallback);
 
 private:
   void stopImpl(bool join);
 
-  size_t workerCount_;
+  size_t workerCount_;      //线程数量
   size_t workerMaxCount_;
-  size_t idleCount_;
-  size_t pendingTaskCountMax_;
-  size_t expiredCount_;
+  size_t idleCount_;        //空闲线程数量
+  size_t pendingTaskCountMax_;  //挂起任务上限
+  size_t expiredCount_; //过期任务数量
   ExpireCallback expireCallback_;
 
   ThreadManager::STATE state_;
@@ -151,16 +151,16 @@ private:
 
 
   friend class ThreadManager::Task;
-  std::queue<shared_ptr<Task> > tasks_;
-  Mutex mutex_;
-  Monitor monitor_;
-  Monitor maxMonitor_;
-  Monitor workerMonitor_;
+  std::queue<shared_ptr<Task> > tasks_; //任务队列
+  Mutex mutex_;         //锁定任务队列 tasks_
+  Monitor monitor_;     //锁定线程数量等
+  Monitor maxMonitor_;  //最大任务队列
+  Monitor workerMonitor_;   //锁定线程池 workers_
 
   friend class ThreadManager::Worker;
-  std::set<shared_ptr<Thread> > workers_;
-  std::set<shared_ptr<Thread> > deadWorkers_;
-  std::map<const Thread::id_t, shared_ptr<Thread> > idMap_;
+  std::set<shared_ptr<Thread> > workers_;   //线程池
+  std::set<shared_ptr<Thread> > deadWorkers_;   //僵死线程池
+  std::map<const Thread::id_t, shared_ptr<Thread> > idMap_; //线程id-线程map
 };
 
 class ThreadManager::Task : public Runnable {
@@ -182,7 +182,7 @@ class ThreadManager::Task : public Runnable {
 
   void run() {
     if (state_ == EXECUTING) {
-      runnable_->run();
+      runnable_->run();     //执行塞在Task里的Runnable子类的实例的run方法
       state_ = COMPLETE;
     }
   }
@@ -196,13 +196,13 @@ class ThreadManager::Task : public Runnable {
   }
 
  private:
-  shared_ptr<Runnable> runnable_;
+  shared_ptr<Runnable> runnable_;   //目测这又是一个指向自身的指针
   friend class ThreadManager::Worker;
   STATE state_;
   int64_t expireTime_;
 };
 
-class ThreadManager::Worker: public Runnable {
+class ThreadManager::Worker: public Runnable {      //Thread类的核心是一个Runnable的shared_ptr, 因此这里的Worker会被传入Thread中
   enum STATE {
     UNINITIALIZED,
     STARTING,
@@ -220,10 +220,10 @@ class ThreadManager::Worker: public Runnable {
   ~Worker() {}
 
  private:
-  bool isActive() const {
+  bool isActive() const {   //worker线程没到最大或者状态为joining且任务不为空
     return
       (manager_->workerCount_ <= manager_->workerMaxCount_) ||
-      (manager_->state_ == JOINING && !manager_->tasks_.empty());
+      (manager_->state_ == JOINING && !manager_->tasks_.empty());   //join,需要处理完所有的task; stop,忽略task队列的pendingTask,直接退出
   }
 
  public:
@@ -231,30 +231,30 @@ class ThreadManager::Worker: public Runnable {
    * Worker entry point
    *
    * As long as worker thread is running, pull tasks off the task queue and
-   * execute.
+   * execute. 从ThreadManager的task queue pop一个task,然后处理 --> 维护taskqueue, mutex_; 维护Thread --> workerMonitor_  但是其实mutex_, monitor_, workerMonitor_是共享同一个mutex的啊
    */
   void run() {
     bool active = false;
     bool notifyManager = false;
 
-    /**
+    /** 
      * Increment worker semaphore and notify manager if worker count reached
-     * desired max
+     * desired max //递增信号量, 如果达到上限还需要通知ThreadManager
      *
-     * Note: We have to release the monitor and acquire the workerMonitor
-     * since that is what the manager blocks on for worker add/remove
+     * Note: We have to release the monitor and acquire the workerMonitor //获取worker数量需要对monitor_加锁，但是通知ThreadManager需要先释放monitor,
+     * since that is what the manager blocks on for worker add/remove // 再获取workerMonitor锁, 因为worker的add和remove会阻塞在workerMonitor锁
      */
     {
-      Synchronized s(manager_->monitor_);
+      Synchronized s(manager_->monitor_);   //锁定线程池的monitor_, 增加线程池workerCount_计数
       active = manager_->workerCount_ < manager_->workerMaxCount_;
       if (active) {
         manager_->workerCount_++;
-        notifyManager = manager_->workerCount_ == manager_->workerMaxCount_;
+        notifyManager = manager_->workerCount_ == manager_->workerMaxCount_;    //相等则notifyManager为true
       }
     }
 
-    if (notifyManager) {
-      Synchronized s(manager_->workerMonitor_);
+    if (notifyManager) {    //一次addworker可以新建多个worker, worker依次run起来, 所以开始时会发生workerCount < workerMaxCount的情况
+      Synchronized s(manager_->workerMonitor_);//线程池已满,通知manager_
       manager_->workerMonitor_.notify();
       notifyManager = false;
     }
@@ -269,26 +269,26 @@ class ThreadManager::Worker: public Runnable {
        * worker max count has been decremented such that we exceed it, mark
        * ourself inactive, decrement the worker count and notify the manager
        * (technically we're notifying the next blocked thread but eventually
-       * the manager will see it.
+       * the manager will see it. 在while循环中循环处理task, 锁定manager_->mutex_; 如果workerMaxCount减小,导致workerCount大于MaxCount[即非active状态],本线程就可以结束运行
        */
       {
-        Guard g(manager_->mutex_);
+        Guard g(manager_->mutex_);  //空任务队列时阻塞; 当队列不空，弹出一个任务执行; 更改线程池线程数量,通知线程池
         active = isActive();
 
-        while (active && manager_->tasks_.empty()) {
+        while (active && manager_->tasks_.empty()) {    //active状态且没有task要处理, 标记当前worker为idle线程,等待task到来
           manager_->idleCount_++;
           idle_ = true;
-          manager_->monitor_.wait();
+          manager_->monitor_.wait();            //idle,等待task到来
           active = isActive();
           idle_ = false;
           manager_->idleCount_--;
         }
 
-        if (active) {
-          manager_->removeExpiredTasks();
+        if (active) {       //active状态,正常处理
+          manager_->removeExpiredTasks();       //无锁,pop掉头部的过期task
 
           if (!manager_->tasks_.empty()) {
-            task = manager_->tasks_.front();
+            task = manager_->tasks_.front();        //这里的操作类似manager_->removeNextPending, 但是那个函数是加锁的,而且没有通知机制
             manager_->tasks_.pop();
             if (task->state_ == ThreadManager::Task::WAITING) {
               task->state_ = ThreadManager::Task::EXECUTING;
@@ -297,32 +297,32 @@ class ThreadManager::Worker: public Runnable {
             /* If we have a pending task max and we just dropped below it, wakeup any
                thread that might be blocked on add. */
             if (manager_->pendingTaskCountMax_ != 0 &&
-                manager_->tasks_.size() <= manager_->pendingTaskCountMax_ - 1) {
+                manager_->tasks_.size() <= manager_->pendingTaskCountMax_ - 1) {        //task队列之前满了,现在pop出一个之后,就可以通知其他线程可以重新添加新的task了
               manager_->maxMonitor_.notify();
             }
           }
-        } else {
+        } else {        //非active状态,退出while循环, 准备线程退出
           idle_ = true;
           manager_->workerCount_--;
           notifyManager = (manager_->workerCount_ == manager_->workerMaxCount_);
         }
-      }
+      }     //end of Guard(manager_->mutex_) 到此完成pop任务的过程
 
       if (task) {
         if (task->state_ == ThreadManager::Task::EXECUTING) {
           try {
-            task->run();
+            task->run();    //最终执行的是Task的run函数
           } catch(...) {
             // XXX need to log this
           }
         }
       }
-    }
+    }   //end while(active)...
 
     {
-      Synchronized s(manager_->workerMonitor_);
-      manager_->deadWorkers_.insert(this->thread());
-      if (notifyManager) {
+      Synchronized s(manager_->workerMonitor_);     //非active状态(manager状态正常,且线程池已满)才会到这里
+      manager_->deadWorkers_.insert(this->thread());    //加入到dead线程队列
+      if (notifyManager) {      //当前线程退出之后,如果workerCount和workerMaxCount相等(已满),通知manager
         manager_->workerMonitor_.notify();
       }
     }
@@ -342,25 +342,25 @@ class ThreadManager::Worker: public Runnable {
   std::set<shared_ptr<Thread> > newThreads;
   for (size_t ix = 0; ix < value; ix++) {
     shared_ptr<ThreadManager::Worker> worker = shared_ptr<ThreadManager::Worker>(new ThreadManager::Worker(this));
-    newThreads.insert(threadFactory_->newThread(worker));
+    newThreads.insert(threadFactory_->newThread(worker));       //通过threadFactory用worker制造thread, worker也是runnable子类
   }
 
   {
     Synchronized s(monitor_);
-    workerMaxCount_ += value;
-    workers_.insert(newThreads.begin(), newThreads.end());
+    workerMaxCount_ += value;   //monitor_ <-> workerMaxCount_, workers
+    workers_.insert(newThreads.begin(), newThreads.end());  //workers_, set<shared_ptr<Thread> >
   }
 
   for (std::set<shared_ptr<Thread> >::iterator ix = newThreads.begin(); ix != newThreads.end(); ix++) {
-    shared_ptr<ThreadManager::Worker> worker = dynamic_pointer_cast<ThreadManager::Worker, Runnable>((*ix)->runnable());
+    shared_ptr<ThreadManager::Worker> worker = dynamic_pointer_cast<ThreadManager::Worker, Runnable>((*ix)->runnable());    //智能指针像下类型转换(基类向派生类)
     worker->state_ = ThreadManager::Worker::STARTING;
-    (*ix)->start();
+    (*ix)->start(); //调用thread的start, 具体的thread(如PthreadThread)新建线程,调用绑定的runnable的run接口,最终执行的是worker的run函数
     idMap_.insert(std::pair<const Thread::id_t, shared_ptr<Thread> >((*ix)->getId(), *ix));
   }
 
   {
     Synchronized s(workerMonitor_);
-    while (workerCount_ != workerMaxCount_) {
+    while (workerCount_ != workerMaxCount_) {       //在worker的run里会递增workerCount
       workerMonitor_.wait();
     }
   }
@@ -388,7 +388,7 @@ void ThreadManager::Impl::start() {
   }
 }
 
-void ThreadManager::Impl::stopImpl(bool join) {
+void ThreadManager::Impl::stopImpl(bool join) { //stop->false, join->true
   bool doStop = false;
   if (state_ == ThreadManager::STOPPED) {
     return;
@@ -429,11 +429,11 @@ void ThreadManager::Impl::removeWorker(size_t value) {
 
     workerMaxCount_ -= value;
 
-    if (idleCount_ < value) {
+    if (idleCount_ < value) {   //idle的线程比需要减少的线程数多,可以直接通知相关的idle线程退出
       for (size_t ix = 0; ix < idleCount_; ix++) {
         monitor_.notify();
       }
-    } else {
+    } else {    //否则通知所有线程??
       monitor_.notifyAll();
     }
   }
@@ -441,7 +441,7 @@ void ThreadManager::Impl::removeWorker(size_t value) {
   {
     Synchronized s(workerMonitor_);
 
-    while (workerCount_ != workerMaxCount_) {
+    while (workerCount_ != workerMaxCount_) {   //等待这些线程退出
       workerMonitor_.wait();
     }
 
@@ -475,12 +475,12 @@ void ThreadManager::Impl::removeWorker(size_t value) {
 
     removeExpiredTasks();
     if (pendingTaskCountMax_ > 0 && (tasks_.size() >= pendingTaskCountMax_)) {
-      if (canSleep() && timeout >= 0) {
+      if (canSleep() && timeout >= 0) { //可以等待,等待timeout时间
         while (pendingTaskCountMax_ > 0 && tasks_.size() >= pendingTaskCountMax_) {
           // This is thread safe because the mutex is shared between monitors.
           maxMonitor_.wait(timeout);
         }
-      } else {
+      } else {  //否则直接抛出异常,add Task失败
         throw TooManyPendingTasksException();
       }
     }
@@ -489,12 +489,12 @@ void ThreadManager::Impl::removeWorker(size_t value) {
 
     // If idle thread is available notify it, otherwise all worker threads are
     // running and will get around to this task in time.
-    if (idleCount_ > 0) {
+    if (idleCount_ > 0) {   //如果有idle线程,唤醒
       monitor_.notify();
     }
   }
 
-void ThreadManager::Impl::remove(shared_ptr<Runnable> task) {
+void ThreadManager::Impl::remove(shared_ptr<Runnable> task) {   //不能删除已经添加的task
   (void) task;
   Synchronized s(monitor_);
   if (state_ != ThreadManager::STARTED) {

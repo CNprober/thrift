@@ -27,7 +27,7 @@
 namespace apache { namespace thrift { namespace concurrency {
 
 /**
- * A thread factory to create posix threads
+ * A thread factory to create posix threads BOOST线程工厂
  *
  * @version $Id:$
  */

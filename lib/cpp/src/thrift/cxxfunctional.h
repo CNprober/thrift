@@ -106,7 +106,7 @@
   #include <tr1/functional>
 
   namespace apache { namespace thrift { namespace stdcxx {
-    using ::std::tr1::function;
+    using ::std::tr1::function; //函数指针, 配合bind可以方便的指向静态成员函数, 非静态成员函数, 虚函数等
     using ::std::tr1::bind;
 
     namespace placeholders {
