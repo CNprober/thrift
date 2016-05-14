@@ -143,7 +143,7 @@ using apache::thrift::transport::TTransport;
 /**
  * Enumerated definition of the types that the Thrift protocol supports.
  * Take special note of the T_END type which is used specifically to mark
- * the end of a sequence of fields.
+ * the end of a sequence of fields. Thrift支持的协议类型,T_STOP用于标记序列结束
  */
 enum TType {
   T_STOP       = 0,
@@ -684,7 +684,7 @@ class TProtocolFactory {
 };
 
 /**
- * Dummy protocol class.
+ * Dummy protocol class. 傀儡协议类
  *
  * This class does nothing, and should never be instantiated.
  * It is used only by the generator code.

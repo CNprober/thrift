@@ -51,7 +51,7 @@ uint32_t readAll(Transport_ &trans, uint8_t* buf, uint32_t len) {
 /**
  * Generic interface for a method of transporting data. A TTransport may be
  * capable of either reading or writing, but not necessarily both.
- *
+ * 传输数据抽象接口,读写二选一,不能是两者兼得
  */
 class TTransport {
  public:

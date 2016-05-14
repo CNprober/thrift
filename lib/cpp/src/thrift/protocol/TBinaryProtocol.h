@@ -33,7 +33,7 @@ namespace apache { namespace thrift { namespace protocol {
  *
  */
 template <class Transport_>
-class TBinaryProtocolT
+class TBinaryProtocolT      //好混乱的继承关系,把自身当成父类的模板参数 父类调用调用虚函数接口时,实际调用的将会是子类的实现,即使基类指针
   : public TVirtualProtocol< TBinaryProtocolT<Transport_> > {
  protected:
   static const int32_t VERSION_MASK = ((int32_t)0xffff0000);
@@ -197,17 +197,17 @@ class TBinaryProtocolT
   template<typename StrType>
   uint32_t readStringBody(StrType& str, int32_t sz);
 
-  Transport_* trans_;
+  Transport_* trans_;       //模板参数,用到的就只有TTransport
 
   int32_t string_limit_;
   int32_t container_limit_;
 
-  // Enforce presence of version identifier
+  // Enforce presence of version identifier //版本检测
   bool strict_read_;
   bool strict_write_;
 
   // Buffer for reading strings, save for the lifetime of the protocol to
-  // avoid memory churn allocating memory on every string read
+  // avoid memory churn allocating memory on every string read 读取协议内容缓冲区, 跟实例生命周期一致, 避免内存反复申请和释放
   uint8_t* string_buf_;
   int32_t string_buf_size_;
 
