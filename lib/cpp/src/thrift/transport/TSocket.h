@@ -41,14 +41,14 @@ namespace apache { namespace thrift { namespace transport {
 
 /**
  * TCP Socket implementation of the TTransport interface.
- *
+ *TCP套接字封装
  */
 class TSocket : public TVirtualTransport<TSocket> {
  public:
   /**
    * Constructs a new socket. Note that this does NOT actually connect the
    * socket.
-   *
+   *建立一个新的套接字,但是不连接
    */
   TSocket();
 
@@ -64,7 +64,7 @@ class TSocket : public TVirtualTransport<TSocket> {
   /**
    * Constructs a new Unix domain socket.
    * Note that this does NOT actually connect the socket.
-   *
+   *Unix域套接字
    * @param path The Unix domain socket e.g. "/tmp/ThriftTest.binary.thrift"
    */
   TSocket(std::string path);
@@ -81,25 +81,25 @@ class TSocket : public TVirtualTransport<TSocket> {
    */
   virtual bool isOpen();
 
-  /**
+  /**看socket是否有数据可读
    * Calls select on the socket to see if there is more data available.
    */
   virtual bool peek();
 
   /**
    * Creates and opens the UNIX socket.
-   *
+   *新建连接
    * @throws TTransportException If the socket could not connect
    */
   virtual void open();
 
   /**
-   * Shuts down communications on the socket.
+   * Shuts down communications on the socket. 断开连接
    */
   virtual void close();
 
   /**
-   * Reads from the underlying socket.
+   * Reads from the underlying socket. 从底层socket读取数据
    */
   virtual uint32_t read(uint8_t* buf, uint32_t len);
 

@@ -28,7 +28,7 @@
 namespace apache { namespace thrift { namespace transport {
 
 /**
- * Helper template to hoist readAll implementation out of TTransport
+ * Helper template to hoist readAll implementation out of TTransport 辅助函数,辅助调用Transport的readAll函数
  */
 template <class Transport_>
 uint32_t readAll(Transport_ &trans, uint8_t* buf, uint32_t len) {
@@ -73,7 +73,7 @@ class TTransport {
    * but implementations should add logic to test for this condition where
    * possible (i.e. on a socket).
    * This is used by a server to check if it should listen for another
-   * request.
+   * request. 用于server类检查是否应该监听另外一个请求
    */
   virtual bool peek() {
     return isOpen();
@@ -97,11 +97,11 @@ class TTransport {
   }
 
   /**
-   * Attempt to read up to the specified number of bytes into the string.
+   * Attempt to read up to the specified number of bytes into the string. 尝试读取特定字节数的内容
    *
    * @param buf  Reference to the location to write the data
    * @param len  How many bytes to read
-   * @return How many bytes were actually read
+   * @return How many bytes were actually read 返回实际读取的字节数
    * @throws TTransportException If an error occurs
    */
   uint32_t read(uint8_t* buf, uint32_t len) {
@@ -114,12 +114,12 @@ class TTransport {
   }
 
   /**
-   * Reads the given amount of data in its entirety no matter what.
+   * Reads the given amount of data in its entirety no matter what. 整个读取
    *
    * @param s     Reference to location for read data
    * @param len   How many bytes to read
-   * @return How many bytes read, which must be equal to size
-   * @throws TTransportException If insufficient data was read
+   * @return How many bytes read, which must be equal to size	读取的字节数,必须等于参数len
+   * @throws TTransportException If insufficient data was read 如果没有读取到足够的数据则抛出异常
    */
   uint32_t readAll(uint8_t* buf, uint32_t len) {
     T_VIRTUAL_CALL();
@@ -132,9 +132,9 @@ class TTransport {
   /**
    * Called when read is completed.
    * This can be over-ridden to perform a transport-specific action
-   * e.g. logging the request to a file
+   * e.g. logging the request to a file 读取结束会调用这个函数,可以用来执行一些特定transport的动作,如记录日志
    *
-   * @return number of bytes read if available, 0 otherwise.
+   * @return number of bytes read if available, 0 otherwise. 
    */
   virtual uint32_t readEnd() {
     // default behaviour is to do nothing
@@ -142,7 +142,7 @@ class TTransport {
   }
 
   /**
-   * Writes the string in its entirety to the buffer.
+   * Writes the string in its entirety to the buffer. 写整个数据,之后一定要flush,否则transport不保证数据可达
    *
    * Note: You must call flush() to ensure the data is actually written,
    * and available to be read back in the future.  Destroying a TTransport
@@ -165,7 +165,7 @@ class TTransport {
   /**
    * Called when write is completed.
    * This can be over-ridden to perform a transport-specific action
-   * at the end of a request.
+   * at the end of a request. 写结束自动调用这个函数
    *
    * @return number of bytes written if available, 0 otherwise
    */
@@ -176,7 +176,7 @@ class TTransport {
 
   /**
    * Flushes any pending data to be written. Typically used with buffered
-   * transport mechanisms.
+   * transport mechanisms. 刷新写入挂起的数据,通常在带缓冲的transport中使用
    *
    * @throws TTransportException if an error occurs
    */
@@ -192,21 +192,21 @@ class TTransport {
    * data that they will need, then consume (see next method) what they
    * actually use.  Some transports will not support this method and others
    * will fail occasionally, so protocols must be prepared to use read if
-   * borrow fails.
-   *
+   * borrow fails. 尝试读取数据到buf里,但是不消费read到的数据;这个方法用于支持可变长度的协议处理
+   *先读取填所需的最大长度的字节,然后分析之后,只消费他们实际所需的字节数
    * @oaram buf  A buffer where the data can be stored if needed.
    *             If borrow doesn't return buf, then the contents of
    *             buf after the call are undefined.  This parameter may be
    *             NULL to indicate that the caller is not supplying storage,
    *             but would like a pointer into an internal buffer, if
-   *             available.
+   *             available. 借来的数据存储在这里.如果不能借,这个返回参数的值是未定义的;也可以置表示transport不支持存储,希望直接指针操作中间缓存区
    * @param len  *len should initially contain the number of bytes to borrow.
-   *             If borrow succeeds, *len will contain the number of bytes
-   *             available in the returned pointer.  This will be at least
-   *             what was requested, but may be more if borrow returns
-   *             a pointer to an internal buffer, rather than buf.
-   *             If borrow fails, the contents of *len are undefined.
-   * @return If the borrow succeeds, return a pointer to the borrowed data.
+   *             If borrow succeeds, *len will contain the number of bytes 初始是要借的字节数,借成功之后,是实际借来可用的字节数
+   *             available in the returned pointer.  This will be at least 
+   *             what was requested, but may be more if borrow returns 至少是初始要借的字节大小.如果支持直接操作中间缓冲区,len会比初始值更大
+   *             a pointer to an internal buffer, rather than buf. 
+   *             If borrow fails, the contents of *len are undefined. 如果借失败, len未定义
+   * @return If the borrow succeeds, return a pointer to the borrowed data. 能借返回参数buf,不能借则返回指向transport的中间缓冲区
    *         This might be equal to \c buf, or it might be a pointer into
    *         the transport's internal buffers.
    * @throws TTransportException if an error occurs
@@ -221,7 +221,7 @@ class TTransport {
 
   /**
    * Remove len bytes from the transport.  This should always follow a borrow
-   * of at least len bytes, and should always succeed.
+   * of at least len bytes, and should always succeed. 从read来的缓冲区中移除len字节数
    * TODO(dreiss): Is there any transport that could borrow but fail to
    * consume, or that would require a buffer to dump the consumed data?
    *
@@ -247,7 +247,7 @@ class TTransport {
 /**
  * Generic factory class to make an input and output transport out of a
  * source transport. Commonly used inside servers to make input and output
- * streams out of raw clients.
+ * streams out of raw clients. 工厂,server中用于使用Transport制造in和out 流.
  *
  */
 class TTransportFactory {
@@ -257,7 +257,7 @@ class TTransportFactory {
   virtual ~TTransportFactory() {}
 
   /**
-   * Default implementation does nothing, just returns the transport given.
+   * Default implementation does nothing, just returns the transport given. 默认直接返回给定的Transport实例
    */
   virtual boost::shared_ptr<TTransport> getTransport(boost::shared_ptr<TTransport> trans) {
     return trans;

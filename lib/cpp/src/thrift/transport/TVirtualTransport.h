@@ -27,20 +27,20 @@ namespace apache { namespace thrift { namespace transport {
 
 /**
  * Helper class that provides default implementations of TTransport methods.
- *
+ * 提供TTransport的read, readAll, write, borrow, consume接口的默认实现
  * This class provides default implementations of read(), readAll(), write(),
  * borrow() and consume().
  *
  * In the TTransport base class, each of these methods simply invokes its
  * virtual counterpart.  This class overrides them to always perform the
- * default behavior, without a virtual function call.
- *
+ * default behavior, without a virtual function call. 在TTransport基类中这5个函数只是简单调用虚函数的版本
+ *在这个类中,这些函数被覆盖为默认实现,而不是调用虚函数(但是其实还是调用虚函数啊, 估计是后来改了实现但是没改注释,汗)
  * The primary purpose of this class is to serve as a base class for
  * TVirtualTransport, and prevent infinite recursion if one of its subclasses
  * does not override the TTransport implementation of these methods.  (Since
  * TVirtualTransport::read_virt() calls read(), and TTransport::read() calls
- * read_virt().)
- */
+ * read_virt().) 这个类的主要目的是作为TVirtualTransport类的几类,这样可以阻止由于子类没有覆盖TTransport的这5个函数时发生的无限循环,即TVT的read_virt调用TT的read,而TT的read又调用read_vitr
+ *///但是这里的实现依旧是调用virtual副本函数,猜测原本不是这样实现的
 class TTransportDefaults : public TTransport {
  public:
   /*
@@ -69,19 +69,19 @@ class TTransportDefaults : public TTransport {
 
 /**
  * Helper class to provide polymorphism for subclasses of TTransport.
- *
+ *提供TTransport子类多态性的辅助类
  * This class implements *_virt() methods of TTransport, to call the
  * non-virtual versions of these functions in the proper subclass.
- *
+ *这个类实现virt版本函数, 这些函数调用非virt版本
  * To define your own transport class using TVirtualTransport:
  * 1) Derive your subclass from TVirtualTransport<your class>
  *    e.g:  class MyTransport : public TVirtualTransport<MyTransport> {
  * 2) Provide your own implementations of read(), readAll(), etc.
  *    These methods should be non-virtual.
- *
+ *所以自己实现的transsport函数需要实现read,readAll等函数,且不能是virtual的
  * Transport implementations that need to use virtual inheritance when
  * inheriting from TTransport cannot use TVirtualTransport.
- *
+ *Transport如果通过虚拟继承TTransport类则不能再继承TVirtualTransport ??不懂 
  * @author Chad Walters <chad@powerset.com>
  */
 template <class Transport_, class Super_=TTransportDefaults>
