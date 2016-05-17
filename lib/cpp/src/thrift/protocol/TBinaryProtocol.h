@@ -32,7 +32,7 @@ namespace apache { namespace thrift { namespace protocol {
  * binary format, essentially just spitting out the raw bytes.
  *
  */
-template <class Transport_>
+template <class Transport_>     //TTransport
 class TBinaryProtocolT      //好混乱的继承关系,把自身当成父类的模板参数 父类调用调用虚函数接口时,实际调用的将会是子类的实现,即使基类指针
   : public TVirtualProtocol< TBinaryProtocolT<Transport_> > {
  protected:

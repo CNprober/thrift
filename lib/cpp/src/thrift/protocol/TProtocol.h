@@ -288,7 +288,7 @@ uint32_t skip(Protocol_& prot, TType type) {
  * a protocol must implement. Essentially, there must be some way of reading
  * and writing all the base types, plus a mechanism for writing out structs
  * with indexed fields.
- *
+ *协议驱动抽象类,必须实现所有基础类型读写,以及带index索引的自定义类型的读写
  * TProtocol objects should not be shared across multiple encoding contexts,
  * as they may need to maintain internal state in some protocols (i.e. XML).
  * Note that is is acceptable for the TProtocol module to do its own internal

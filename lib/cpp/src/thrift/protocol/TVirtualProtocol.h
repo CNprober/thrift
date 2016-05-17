@@ -28,12 +28,12 @@ using apache::thrift::transport::TTransport;
 
 /**
  * Helper class that provides default implementations of TProtocol methods.
- *
+ *TProtocol的默认实现类
  * This class provides default implementations of the non-virtual TProtocol
  * methods.  It exists primarily so TVirtualProtocol can derive from it.  It
  * prevents TVirtualProtocol methods from causing infinite recursion if the
  * non-virtual methods are not overridden by the TVirtualProtocol subclass.
- *
+ *提供了非虚函数的默认实现,以防止子类由于没有覆盖这些非虚函数导致的无限递归调用
  * You probably don't want to use this class directly.  Use TVirtualProtocol
  * instead.
  */
@@ -328,11 +328,11 @@ class TVirtualProtocol : public Super_ {
 
   virtual uint32_t writeMessageBegin_virt(const std::string& name,
                                           const TMessageType messageType,
-                                          const int32_t seqid) {
-    return static_cast<Protocol_*>(this)->writeMessageBegin(name, messageType,
-                                                            seqid);
-  }
-
+                                          const int32_t seqid) {    //虚函数调用非虚函数版本, 在TProtocol中,非虚函数又调用虚函数版本接口;
+    return static_cast<Protocol_*>(this)->writeMessageBegin(name, messageType, //所以如果子类没有覆盖某个非虚函数,就会调用到这里的非虚函数,就会引起无限递归调用
+                                                            seqid); //因此TVirtualProtocol应该继承TProtocolDefault, 且虚函数调用子类的非虚函数,在子类的非虚函数中实现具体逻辑
+  } //子类实现非虚函数writeMessageBegin, TProtocol指针执行writeMessageBegin就调用这里的虚函数版本,继而调用的是子类的非虚函数版本
+  //如果子类没有实现writeMessageBegin,TProtocol指针执行writeMessageBegin还是执行到这里,但是调用的就是基类的writeMessageBegin. 如果中间没有多一层覆盖了writeMessageBegin的TProtocolDefault, 就会形成无限递归
   virtual uint32_t writeMessageEnd_virt() {
     return static_cast<Protocol_*>(this)->writeMessageEnd();
   }
