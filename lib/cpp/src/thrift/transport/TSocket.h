@@ -104,102 +104,102 @@ class TSocket : public TVirtualTransport<TSocket> {
   virtual uint32_t read(uint8_t* buf, uint32_t len);
 
   /**
-   * Writes to the underlying socket.  Loops until done or fail.
+   * Writes to the underlying socket.  Loops until done or fail. 向底层socket写数据,循环写直到写完或者失败
    */
   virtual void write(const uint8_t* buf, uint32_t len);
 
-  /**
-   * Writes to the underlying socket.  Does single send() and returns result.
+  /** partial 部分
+   * Writes to the underlying socket.  Does single send() and returns result. 向底层写数据,调用一次send,返回数据
    */
   uint32_t write_partial(const uint8_t* buf, uint32_t len);
 
   /**
    * Get the host that the socket is connected to
-   *
+   *获取对端socket的host, 返回host标识串
    * @return string host identifier
    */
   std::string getHost();
 
   /**
    * Get the port that the socket is connected to
-   *
+   *获取对端sockt的端口
    * @return int port number
    */
   int getPort();
 
   /**
    * Set the host that socket will connect to
-   *
+   *设置对端host
    * @param host host identifier
    */
   void setHost(std::string host);
 
   /**
    * Set the port that socket will connect to
-   *
+   *设置对端端口
    * @param port port number
    */
   void setPort(int port);
 
-  /**
+  /** linger 逗留,徘徊,慢慢消失, 这个选项是控制断开连接时是否继续发送缓冲区数据
    * Controls whether the linger option is set on the socket.
-   *
+   *SO_LINGER选项开关 
    * @param on      Whether SO_LINGER is on
    * @param linger  If linger is active, the number of seconds to linger for
    */
   void setLinger(bool on, int linger);
 
   /**
-   * Whether to enable/disable Nagle's algorithm.
-   *
-   * @param noDelay Whether or not to disable the algorithm.
+   * Whether to enable/disable Nagle's algorithm. Nagle算法
+   *Nagle算法只允许一个未被ACK的小包存在于网络, 这避免了大量的小包充斥网络. 提高了网络吞吐率,但是增加了网络时延
+   * @param noDelay Whether or not to disable the algorithm. 对时延敏感的应用要关闭Nagle算法, 即设置TCP_NODELAY选项
    * @return
    */
   void setNoDelay(bool noDelay);
 
   /**
-   * Set the connect timeout
+   * Set the connect timeout connect超时时间
    */
   void setConnTimeout(int ms);
 
   /**
-   * Set the receive timeout
+   * Set the receive timeout receive超时时间
    */
   void setRecvTimeout(int ms);
 
   /**
-   * Set the send timeout
+   * Set the send timeout send超时时间
    */
   void setSendTimeout(int ms);
 
   /**
-   * Set the max number of recv retries in case of an THRIFT_EAGAIN
+   * Set the max number of recv retries in case of an THRIFT_EAGAIN recv的重试次数
    * error
    */
   void setMaxRecvRetries(int maxRecvRetries);
 
   /**
-   * Get socket information formated as a string <Host: x Port: x>
+   * Get socket information formated as a string <Host: x Port: x> socket信息
    */
   std::string getSocketInfo();
 
   /**
-   * Returns the DNS name of the host to which the socket is connected
+   * Returns the DNS name of the host to which the socket is connected 对端DNS转换的URL
    */
   std::string getPeerHost();
 
   /**
-   * Returns the address of the host to which the socket is connected
+   * Returns the address of the host to which the socket is connected 对端地址
    */
   std::string getPeerAddress();
 
   /**
-   * Returns the port of the host to which the socket is connected
+   * Returns the port of the host to which the socket is connected 对端端口
    **/
   int getPeerPort();
 
   /**
-   * Returns the underlying socket file descriptor.
+   * Returns the underlying socket file descriptor. 返回底层socket结构体对象, 非windows就是int
    */
   THRIFT_SOCKET getSocketFD() {
     return socket_;
@@ -208,41 +208,41 @@ class TSocket : public TVirtualTransport<TSocket> {
   /**
    * (Re-)initialize a TSocket for the supplied descriptor.  This is only
    * intended for use by TNonblockingServer -- other use may result in
-   * unfortunate surprises.
+   * unfortunate surprises. 用一个描述符初始化/重新初始化TSocket结构, 只能用于TNonblockingServer
    *
-   * @param fd the descriptor for an already-connected socket
+   * @param fd the descriptor for an already-connected socket 参数是一个已经连接的socket套接字
    */
   void setSocketFD(THRIFT_SOCKET fd);
 
   /*
-   * Returns a cached copy of the peer address.
+   * Returns a cached copy of the peer address. 对端地址的拷贝
    */
   sockaddr* getCachedAddress(socklen_t* len) const;
 
   /**
-   * Sets whether to use a low minimum TCP retransmission timeout.
+   * Sets whether to use a low minimum TCP retransmission timeout. 设置是否使用一个较低的最小TCP重传超时时间
    */
   static void setUseLowMinRto(bool useLowMinRto);
 
   /**
-   * Gets whether to use a low minimum TCP retransmission timeout.
+   * Gets whether to use a low minimum TCP retransmission timeout. 获取是否使用...
    */
   static bool getUseLowMinRto();
 
   /**
-   * Constructor to create socket from raw UNIX handle.
+   * Constructor to create socket from raw UNIX handle. 构造杉树
    */
   TSocket(THRIFT_SOCKET socket);
 
   /**
-   * Set a cache of the peer address (used when trivially available: e.g.
+   * Set a cache of the peer address (used when trivially available: e.g. 设置对端地址, 一般情况下用在accept, connect等
    * accept() or connect()). Only caches IPV4 and IPV6; unset for others.
    */
   void setCachedAddress(const sockaddr* addr, socklen_t len);
 
  protected:
   /** connect, called by open */
-  void openConnection(struct addrinfo *res);
+  void openConnection(struct addrinfo *res); //open调用，连接
 
   /** Host to connect to */
   std::string host_;
