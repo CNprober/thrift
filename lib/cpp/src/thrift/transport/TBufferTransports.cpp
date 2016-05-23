@@ -31,13 +31,13 @@ uint32_t TBufferedTransport::readSlow(uint8_t* buf, uint32_t len) {
   uint32_t have = static_cast<uint32_t>(rBound_ - rBase_);
 
   // We should only take the slow path if we can't satisfy the read
-  // with the data already in the buffer.
+  // with the data already in the buffer. 只有当缓存区数据不够read才能执行本函数
   assert(have < len);
 
   // If we have some data in the buffer, copy it out and return it.
   // We have to return it without attempting to read more, since we aren't
   // guaranteed that the underlying transport actually has more data, so
-  // attempting to read from it could block.
+  // attempting to read from it could block. 缓存区有数据就直接返回这些数据,因为不能确定底层还有更多数据可读
   if (have > 0) {
     memcpy(buf, rBase_, have);
     setReadBuffer(rBuf_.get(), 0);
@@ -45,13 +45,13 @@ uint32_t TBufferedTransport::readSlow(uint8_t* buf, uint32_t len) {
   }
 
   // No data is available in our buffer.
-  // Get more from underlying transport up to buffer size.
-  // Note that this makes a lot of sense if len < rBufSize_
+  // Get more from underlying transport up to buffer size. 缓冲区没有数据,则读取更多数据
+  // Note that this makes a lot of sense if len < rBufSize_ 当len小于最大缓冲区长度才有意义,否则是没有意义的;所以读取的数据限于最大缓冲区长度
   // and almost no sense otherwise.  TODO(dreiss): Fix that
   // case (possibly including some readv hotness).
   setReadBuffer(rBuf_.get(), transport_->read(rBuf_.get(), rBufSize_));
 
-  // Hand over whatever we have.
+  // Hand over whatever we have. 返回我们有的数据
   uint32_t give = (std::min)(len, static_cast<uint32_t>(rBound_ - rBase_));
   memcpy(buf, rBase_, give);
   rBase_ += give;

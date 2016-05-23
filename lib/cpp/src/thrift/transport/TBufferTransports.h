@@ -37,15 +37,15 @@
 namespace apache { namespace thrift { namespace transport {
 
 
-/**
+/** 维护读写缓冲区的起始/结束指针,即Internal Pointers, 使用之前要在子类中先调用setReadBuffer和setWriteBuffer(protected属性)
  * Base class for all transports that use read/write buffers for performance.
- *
+ *为使用读/写缓冲区的transport使用
  * TBufferBase is designed to implement the fast-path "memcpy" style
  * operations that work in the common case.  It does so with small and
  * (eventually) nonvirtual, inlinable methods.  TBufferBase is an abstract
  * class.  Subclasses are expected to define the "slow path" operations
  * that have to be done when the buffers are full or empty.
- *
+ *仅实现memcpy风格的公共接口,小而且内联,且非虚的fast-path函数, slow-path的操作需要在子类中实现
  */
 class TBufferBase : public TVirtualTransport<TBufferBase> {
 
@@ -53,7 +53,7 @@ class TBufferBase : public TVirtualTransport<TBufferBase> {
 
   /**
    * Fast-path read.
-   *
+   *数据足够,直接memcpy;不够就让底层来处理
    * When we have enough data buffered to fulfill the read, we can satisfy it
    * with a single memcpy, then adjust our internal pointers.  If the buffer
    * is empty, we call out to our slow path, implemented by a subclass.
@@ -61,12 +61,12 @@ class TBufferBase : public TVirtualTransport<TBufferBase> {
    */
   uint32_t read(uint8_t* buf, uint32_t len) {
     uint8_t* new_rBase = rBase_ + len;
-    if (TDB_LIKELY(new_rBase <= rBound_)) {
+    if (TDB_LIKELY(new_rBase <= rBound_)) { //read的数据量没有超过read缓冲区数据长度, 即有足够的数据可读
       std::memcpy(buf, rBase_, len);
       rBase_ = new_rBase;
       return len;
     }
-    return readSlow(buf, len);
+    return readSlow(buf, len);  //没有足够的数据可读, 子类去处理
   }
 
   /**
@@ -74,17 +74,17 @@ class TBufferBase : public TVirtualTransport<TBufferBase> {
    */
   uint32_t readAll(uint8_t* buf, uint32_t len) {
     uint8_t* new_rBase = rBase_ + len;
-    if (TDB_LIKELY(new_rBase <= rBound_)) {
+    if (TDB_LIKELY(new_rBase <= rBound_)) { //足够的数据,与read一致
       std::memcpy(buf, rBase_, len);
       rBase_ = new_rBase;
       return len;
     }
-    return apache::thrift::transport::readAll(*this, buf, len);
+    return apache::thrift::transport::readAll(*this, buf, len); //这个readAll是模板函数,直接调用第一个参数的readAll,也就是子类的readAll
   }
 
   /**
    * Fast-path write.
-   *
+   *缓冲区足够,直接memcpy; 否则交由子类实现
    * When we have enough empty space in our buffer to accomodate the write, we
    * can satisfy it with a single memcpy, then adjust our internal pointers.
    * If the buffer is full, we call out to our slow path, implemented by a
@@ -93,7 +93,7 @@ class TBufferBase : public TVirtualTransport<TBufferBase> {
    */
   void write(const uint8_t* buf, uint32_t len) {
     uint8_t* new_wBase = wBase_ + len;
-    if (TDB_LIKELY(new_wBase <= wBound_)) {
+    if (TDB_LIKELY(new_wBase <= wBound_)) { //足够缓冲区
       std::memcpy(wBase_, buf, len);
       wBase_ = new_wBase;
       return;
@@ -105,7 +105,7 @@ class TBufferBase : public TVirtualTransport<TBufferBase> {
    * Fast-path borrow.  A lot like the fast-path read.
    */
   const uint8_t* borrow(uint8_t* buf, uint32_t* len) {
-    if (TDB_LIKELY(static_cast<ptrdiff_t>(*len) <= rBound_ - rBase_)) {
+    if (TDB_LIKELY(static_cast<ptrdiff_t>(*len) <= rBound_ - rBase_)) { //数据足够,直接返回起始指针
       // With strict aliasing, writing to len shouldn't force us to
       // refetch rBase_ from memory.  TODO(dreiss): Verify this.
       *len = static_cast<uint32_t>(rBound_ - rBase_);
@@ -118,10 +118,10 @@ class TBufferBase : public TVirtualTransport<TBufferBase> {
    * Consume doesn't require a slow path.
    */
   void consume(uint32_t len) {
-    if (TDB_LIKELY(static_cast<ptrdiff_t>(len) <= rBound_ - rBase_)) {
+    if (TDB_LIKELY(static_cast<ptrdiff_t>(len) <= rBound_ - rBase_)) {  //足够数据,直接消费
       rBase_ += len;
     } else {
-      throw TTransportException(TTransportException::BAD_ARGS,
+      throw TTransportException(TTransportException::BAD_ARGS,      //数据不足,不能消费,直接抛出错误
                                 "consume did not follow a borrow.");
     }
   }
@@ -143,7 +143,7 @@ class TBufferBase : public TVirtualTransport<TBufferBase> {
   virtual const uint8_t* borrowSlow(uint8_t* buf, uint32_t* len) = 0;
 
   /**
-   * Trivial constructor.
+   * Trivial constructor. 琐碎的构造函数
    *
    * Initialize pointers safely.  Constructing is not a very
    * performance-sensitive operation, so it is okay to just leave it to
@@ -156,16 +156,16 @@ class TBufferBase : public TVirtualTransport<TBufferBase> {
     , wBound_(NULL)
   {}
 
-  /// Convenience mutator for setting the read buffer.
+  /// Convenience mutator for setting the read buffer. mutator-改变对象属性的方法
   void setReadBuffer(uint8_t* buf, uint32_t len) {
     rBase_ = buf;
-    rBound_ = buf+len;
+    rBound_ = buf+len;  //初始len=0
   }
 
   /// Convenience mutator for setting the write buffer.
   void setWriteBuffer(uint8_t* buf, uint32_t len) {
     wBase_ = buf;
-    wBound_ = buf+len;
+    wBound_ = buf+len;  //初始len=缓冲区最大长度
   }
 
   virtual ~TBufferBase() {}
@@ -186,7 +186,7 @@ class TBufferBase : public TVirtualTransport<TBufferBase> {
  * Buffered transport. For reads it will read more data than is requested
  * and will serve future data out of a local buffer. For writes, data is
  * stored to an in memory buffer before being written out.
- *
+ *对于读,会读取更多的数据以便未来使用;对于写,数据将存储起来以便未来发送.-- 就是带缓冲区的读写层
  */
 class TBufferedTransport
   : public TVirtualTransport<TBufferedTransport, TBufferBase> {
@@ -194,7 +194,7 @@ class TBufferedTransport
 
   static const int DEFAULT_BUFFER_SIZE = 512;
 
-  /// Use default buffer sizes.
+  /// Use default buffer sizes. 3个构造函数用于设置读写缓冲区的大小,和具体数据层指针,如TSocket
   TBufferedTransport(boost::shared_ptr<TTransport> transport)
     : transport_(transport)
     , rBufSize_(DEFAULT_BUFFER_SIZE)
@@ -227,17 +227,17 @@ class TBufferedTransport
     initPointers();
   }
 
-  void open() {
+  void open() {     //底层连接
     transport_->open();
   }
 
-  bool isOpen() {
+  bool isOpen() {   //判断底层是否连接
     return transport_->isOpen();
   }
 
   bool peek() {
-    if (rBase_ == rBound_) {
-      setReadBuffer(rBuf_.get(), transport_->read(rBuf_.get(), rBufSize_));
+    if (rBase_ == rBound_) {    //父类TBufferBase的变量,protected属性. 如果相等,则读缓冲区为空
+      setReadBuffer(rBuf_.get(), transport_->read(rBuf_.get(), rBufSize_)); //为空则重新读满
     }
     return (rBound_ > rBase_);
   }
@@ -259,11 +259,11 @@ class TBufferedTransport
    * but that may change in a future version:
    * 1/ If len is at most rBufSize_, borrow will never return NULL.
    *    Depending on the underlying transport, it could throw an exception
-   *    or hang forever.
+   *    or hang forever.如果len不超过缓冲区最大长度,取决于底层实现,抛出异常或者永久挂起
    * 2/ Some borrow requests may copy bytes internally.  However,
    *    if len is at most rBufSize_/2, none of the copied bytes
    *    will ever have to be copied again.  For optimial performance,
-   *    stay under this limit.
+   *    stay under this limit.为了最优性能考虑,len不要超过最大缓冲区的一半
    */
   virtual const uint8_t* borrowSlow(uint8_t* buf, uint32_t* len);
 
@@ -275,7 +275,7 @@ class TBufferedTransport
    * TVirtualTransport provides a default implementation of readAll().
    * We want to use the TBufferBase version instead.
    */
-  uint32_t readAll(uint8_t* buf, uint32_t len) {
+  uint32_t readAll(uint8_t* buf, uint32_t len) {    //TBufferBase通过全局的readAll调用的具体类的readAll, 但是这里readAll又去调用TBufferBase的readAll, 感觉这里是有问题的
     return TBufferBase::readAll(buf, len);
   }
 
@@ -320,7 +320,7 @@ class TBufferedTransportFactory : public TTransportFactory {
  * called, at which point the transport writes the length of the entire
  * binary chunk followed by the data payload. This allows the receiver on the
  * other end to always do fixed-length reads.
- *
+ *暂存所有写数据直到调用了flush.这使得对端可以总是读取固定长度的数据
  */
 class TFramedTransport
   : public TVirtualTransport<TFramedTransport, TBufferBase> {
@@ -393,7 +393,7 @@ class TFramedTransport
  protected:
   /**
    * Reads a frame of input from the underlying stream.
-   *
+   *读取一帧
    * Returns true if a frame was read successfully, or false on EOF.
    * (Raises a TTransportException if EOF occurs after a partial frame.)
    */
@@ -443,7 +443,7 @@ class TFramedTransportFactory : public TTransportFactory {
  *
  * The buffers are allocated using C constructs malloc,realloc, and the size
  * doubles as necessary.  We've considered using scoped
- *
+ *读写数据都直接放在内存里, 内存用C的malloc,realloc维护
  */
 class TMemoryBuffer : public TVirtualTransport<TMemoryBuffer, TBufferBase> {
  private:
