@@ -60,10 +60,10 @@ uint32_t TBufferedTransport::readSlow(uint8_t* buf, uint32_t len) {
 }
 
 void TBufferedTransport::writeSlow(const uint8_t* buf, uint32_t len) {
-  uint32_t have_bytes = static_cast<uint32_t>(wBase_ - wBuf_.get());
-  uint32_t space = static_cast<uint32_t>(wBound_ - wBase_);
+  uint32_t have_bytes = static_cast<uint32_t>(wBase_ - wBuf_.get()); //已使用区域长度
+  uint32_t space = static_cast<uint32_t>(wBound_ - wBase_);	//空闲区长度
   // We should only take the slow path if we can't accomodate the write
-  // with the free space already in the buffer.
+  // with the free space already in the buffer. 只有当空闲区长度不够写的时候才能调用本函数writeSlow
   assert(wBound_ - wBase_ < static_cast<ptrdiff_t>(len));
 
   // Now here's the tricky question: should we copy data from buf into our
@@ -85,7 +85,7 @@ void TBufferedTransport::writeSlow(const uint8_t* buf, uint32_t len) {
   // The case where we have to do two syscalls.
   // This case also covers the case where the buffer is empty,
   // but it is clearer (I think) to think of it as two separate cases.
-  if ((have_bytes + len >= 2*wBufSize_) || (have_bytes == 0)) {
+  if ((have_bytes + len >= 2*wBufSize_) || (have_bytes == 0)) { //如果已有数据和将要写的数据和超过2倍的缓冲区大小,直接两次写解决
     // TODO(dreiss): writev
     if (have_bytes > 0) {
       transport_->write(wBuf_.get(), have_bytes);
@@ -99,7 +99,7 @@ void TBufferedTransport::writeSlow(const uint8_t* buf, uint32_t len) {
   memcpy(wBase_, buf, space);
   buf += space;
   len -= space;
-  transport_->write(wBuf_.get(), wBufSize_);
+  transport_->write(wBuf_.get(), wBufSize_);//否则拷贝到一倍缓冲区大小,写一次,剩下的放在缓冲区
 
   // Copy the rest into our buffer.
   assert(len < wBufSize_);
@@ -117,7 +117,7 @@ const uint8_t* TBufferedTransport::borrowSlow(uint8_t* buf, uint32_t* len) {
 }
 
 void TBufferedTransport::flush()  {
-  // Write out any data waiting in the write buffer.
+  // Write out any data waiting in the write buffer. 写缓冲区数据, 调用底层flush操作
   uint32_t have_bytes = static_cast<uint32_t>(wBase_ - wBuf_.get());
   if (have_bytes > 0) {
     // Note that we reset wBase_ prior to the underlying write

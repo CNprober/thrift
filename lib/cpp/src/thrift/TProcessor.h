@@ -132,7 +132,7 @@ class TProcessorContextFreer {
  * an input and the other an output. The definition of this object is loose,
  * though the typical case is for some sort of server that either generates
  * responses to an input stream or forwards data from one pipe onto another.
- *
+ *processor是输入和输出中间活动的宽泛的对象.典型的场景是针对输入产生输出,或者将数据从一个pipe导到另一个pipe
  */
 class TProcessor {
  public:
@@ -190,10 +190,10 @@ class ReleaseHandler {
 };
 
 struct TConnectionInfo {
-  // The input and output protocols
+  // The input and output protocols 连接信息类,input和output协议实例
   boost::shared_ptr<protocol::TProtocol> input;
   boost::shared_ptr<protocol::TProtocol> output;
-  // The underlying transport used for the connection
+  // The underlying transport used for the connection transport实例,这个是TServerTransport::accept返回的transport实例,可能不同于input和output指向的transport实例
   // This is the transport that was returned by TServerTransport::accept(),
   // and it may be different than the transport pointed to by the input and
   // output protocols.
@@ -206,16 +206,16 @@ class TProcessorFactory {
 
   /**
    * Get the TProcessor to use for a particular connection.
-   *
+   *TProcessor工厂类
    * This method is always invoked in the same thread that the connection was
    * accepted on.  This generally means that this call does not need to be
-   * thread safe, as it will always be invoked from a single thread.
+   * thread safe, as it will always be invoked from a single thread. 本函数总是在同一个线程中被调用,因此本线程不要求是线程安全的
    */
   virtual boost::shared_ptr<TProcessor> getProcessor(
       const TConnectionInfo& connInfo) = 0;
 };
 
-class TSingletonProcessorFactory : public TProcessorFactory {
+class TSingletonProcessorFactory : public TProcessorFactory {	//单processor工厂,有点单例模式的味道
  public:
   TSingletonProcessorFactory(boost::shared_ptr<TProcessor> processor) :
       processor_(processor) {}

@@ -100,7 +100,7 @@ class TDispatchProcessorT : public TProcessor {
 
 /**
  * Non-templatized version of TDispatchProcessor, that doesn't bother trying to
- * perform a dynamic_cast.
+ * perform a dynamic_cast. 具体TProcessor类, thrift程序生成的Processor就是继承这个类
  */
 class TDispatchProcessor : public TProcessor {
  public:
